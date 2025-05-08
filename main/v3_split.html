@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -168,7 +168,7 @@
     <div class="input-container">
         <h2>Device Checker</h2>
         <p id="errorMessage" class="message"></p> <div class="input-group">
-            <input type="text" id="searchInput" placeholder="Enter text..." disabled> <button id="clearButton" disabled>Clear</button> </div>
+            <input type="text" id="searchInput" placeholder="Loading device data..." disabled> <button id="clearButton" disabled>Clear</button> </div>
         <p id="statusMessage" class="message"></p>
         <p id="countMessage" class="message"></p>
         <ul id="suggestions">
@@ -183,38 +183,30 @@
         const countMessage = document.getElementById('countMessage');
         const errorMessage = document.getElementById('errorMessage'); // Get the error message element
 
-        // --- Hypothetical SharePoint URL for JSON data ---
-        // IMPORTANT: Replace this with your actual SharePoint list JSON feed URL.
-        // This is a placeholder URL.
-        const sharepointDataUrl = 'https://github.com/AlexDumchikov/checker/blob/main/main/items.json';
+        // --- GitHub Raw URL for JSON data ---
+        // This URL serves the raw file content, which is more suitable for fetching via fetch/XHR.
+        const githubRawDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json';
 
         // Variable to store the fetched data
         let deviceData = [];
 
-        // --- Function to Fetch Data from SharePoint ---
-        async function fetchDeviceData() {
+        // --- Function to Fetch Data from the URL ---
+        async function fetchData(url) {
             try {
-                // Show a loading indicator or message if desired
+                // Show a loading indicator or message
                 searchInput.placeholder = 'Loading device data...';
                 searchInput.disabled = true;
                 clearButton.disabled = true;
                 errorMessage.style.display = 'none'; // Hide previous errors
 
-                const response = await fetch(sharepointDataUrl);
+                const response = await fetch(url);
 
                 if (!response.ok) {
                     // Handle HTTP errors (e.g., 404 Not Found, 500 Internal Server Error)
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                // Assuming the SharePoint list data is returned as a JSON array of strings
-                // If the structure is different (e.g., an array of objects), you'll need to
-                // adjust this part to extract the relevant device identifier string.
-                // Example for array of objects like [{ "Title": "DeviceID1" }, { "Title": "DeviceID2" }]
-                // const data = await response.json();
-                // deviceData = data.map(item => item.Title); // Assuming 'Title' is the column name
-
-                // For a simple array of strings:
+                // Assuming the data is a JSON array of strings
                 deviceData = await response.json();
 
                 console.log('Device data loaded successfully:', deviceData.length, 'items');
@@ -404,7 +396,10 @@
         });
 
         // --- Initialize: Fetch data when the page loads ---
-        document.addEventListener('DOMContentLoaded', fetchDeviceData);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData(githubRawDataUrl); // Call the fetchData function with the raw URL
+        });
+
 
         // Initial state: hide suggestions list, status, count, and error messages
         suggestionsList.style.display = 'none';
