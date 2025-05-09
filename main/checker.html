@@ -29,12 +29,116 @@
             flex-direction: column;
         }
 
-        .input-container h2 {
-            margin-top: 0;
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
-            color: #333;
-            text-align: center;
         }
+
+        .input-container h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        .search-mode-control {
+            display: flex;
+            align-items: center; /* Align items vertically in the center */
+            gap: 10px; /* Space between label, toggle, and label */
+        }
+
+        .search-mode-label {
+            font-size: 12px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            /* Center the toggle switch visually */
+            margin: 0 auto;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2196F3; /* Default blue for 'left only' */
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 34px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2); /* Inner shadow for depth */
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); /* Shadow for the thumb */
+        }
+
+        input:checked + .slider {
+            background-color: #ccc; /* Gray for 'all' */
+             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2); /* Keep inner shadow */
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+
+        input:checked + .slider:before {
+            -webkit-transform: translateX(26px);
+            -ms-transform: translateX(26px);
+            transform: translateX(26px);
+        }
+
+        .toggle-labels {
+             /* Removed absolute positioning and width/height */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px; /* Adjusted font size */
+            font-weight: bold;
+            color: #555; /* Changed color to match label */
+            pointer-events: none; /* Make labels non-interactive */
+            width: auto; /* Allow labels to take necessary width */
+        }
+
+         .toggle-labels span {
+            /* Removed absolute positioning */
+            transform: none;
+            position: static;
+         }
+
+        .toggle-labels .label-start {
+            /* Removed left positioning */
+            margin-right: 5px; /* Add space between label and toggle */
+        }
+
+        .toggle-labels .label-any {
+            /* Removed right positioning */
+            margin-left: 5px; /* Add space between toggle and label */
+        }
+
 
         .input-group {
             display: flex;
@@ -149,7 +253,17 @@
 <body>
 
     <div class="input-container">
-        <h2>Checker</h2>
+        <div class="header-container">
+            <h2>Checker</h2>
+            <div class="search-mode-control">
+                 <span class="search-mode-label">left only</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="searchModeToggle">
+                    <span class="slider round"></span>
+                </label>
+                 <span class="search-mode-label">all</span>
+            </div>
+        </div>
         <p id="errorMessage" class="message"></p>
         <div class="input-group">
             <input type="text" id="searchInput" placeholder="Loading device data..." disabled>
@@ -168,6 +282,7 @@
         const statusMessage = document.getElementById('statusMessage');
         const countMessage = document.getElementById('countMessage');
         const errorMessage = document.getElementById('errorMessage');
+        const searchModeToggle = document.getElementById('searchModeToggle');
 
         const encryptedDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json';
 
@@ -239,10 +354,15 @@
 
             if (!cleanedQuery || processedDeviceData.length === 0) return [];
 
-            const startsWith = processedDeviceData.filter(item => String(item).toLowerCase().startsWith(cleanedQuery));
-            const contains = processedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery) && !String(item).toLowerCase().startsWith(cleanedQuery));
+            const searchMode = searchModeToggle.checked ? 'includes' : 'startsWith'; // Updated logic for checked state
 
-            return startsWith.concat(contains);
+            if (searchMode === 'startsWith') {
+                return processedDeviceData.filter(item => String(item).toLowerCase().startsWith(cleanedQuery));
+            } else { // includes mode
+                const startsWith = processedDeviceData.filter(item => String(item).toLowerCase().startsWith(cleanedQuery));
+                const contains = processedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery) && !String(item).toLowerCase().startsWith(cleanedQuery));
+                return startsWith.concat(contains);
+            }
         }
 
         function displaySuggestions(suggestions) {
@@ -267,6 +387,7 @@
 
                 let highlightedSuggestion = formattedSuggestion;
                 if (cleanedQuery) {
+                     // Create a regex to match the query characters, allowing for spaces in between
                     const regex = new RegExp(cleanedQuery.split('').join('\\s*'), 'gi');
                     highlightedSuggestion = formattedSuggestion.replace(regex, match => {
                         return `<span style="background-color: lightgreen;">${match}</span>`;
@@ -330,6 +451,15 @@
                 searchInput.classList.remove('found-border');
             }
         });
+
+        // Add event listener for the toggle switch
+        searchModeToggle.addEventListener('change', () => {
+            // Re-filter and display suggestions based on the new mode
+            const rawValueForFiltering = searchInput.value.replace(/\s/g, '');
+            const suggestions = filterData(rawValueForFiltering);
+            displaySuggestions(suggestions);
+        });
+
 
         clearButton.addEventListener('click', () => {
             searchInput.value = '';
