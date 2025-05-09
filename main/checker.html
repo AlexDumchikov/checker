@@ -193,7 +193,7 @@
                      throw new Error('Received data is not an array.');
                 }
 
-                // Process each item (decode Base64)
+              
                 processedDeviceData = encodedDeviceData.map(encodedItem => {
                     try {
                         return atob(encodedItem);
