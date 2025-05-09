@@ -1,0 +1,436 @@
+ <!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка Устройств (Декодирование Base64)</title>
+    <style>
+        /* Basic Reset and Body Styling */
+        body {
+            font-family: -apple-system, BlinkMacMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Container for Input and Suggestions */
+        .input-container {
+            width: 100%;
+            max-width: 500px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative; /* Needed for absolute positioning of suggestions if used, but flex handles it here */
+            display: flex; /* Use flex to arrange elements vertically */
+            flex-direction: column;
+        }
+
+        /* Styling for the added heading */
+        .input-container h2 {
+            margin-top: 0;
+            margin-bottom: 15px; /* Add some space below the heading */
+            color: #333;
+            text-align: center; /* Center the heading */
+        }
+
+
+        /* Input and Button Styling */
+        .input-group {
+            display: flex;
+            gap: 10px; /* Space between input and button */
+            margin-bottom: 10px;
+        }
+
+        #searchInput {
+            flex-grow: 1; /* Allows input to take available space */
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Add box-shadow transition */
+        }
+
+        #searchInput:focus {
+            border-color: #007bff; /* Highlight on focus */
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+        }
+
+        /* Style for when items are found */
+        #searchInput.found-border {
+            border-color: #28a745; /* Green border */
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.4); /* Green glow */
+        }
+
+
+        #clearButton {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #dc3545; /* Red color for clear */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            outline: none;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add shadow to button */
+        }
+
+        #clearButton:hover {
+            background-color: #c82333;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3); /* Enhance shadow on hover */
+        }
+
+        /* Status and Count Messages */
+        .message {
+            font-size: 14px;
+            margin-bottom: 5px;
+            padding: 0 10px; /* Add some horizontal padding */
+            display: none; /* Hide by default */
+        }
+
+        #statusMessage {
+            color: #28a745; /* Green color for "Found!" */
+            font-weight: bold;
+        }
+
+        #errorMessage {
+            color: #dc3545; /* Red color for errors */
+            font-weight: bold;
+            display: none; /* Hide by default */
+        }
+
+
+        #countMessage {
+            color: #555;
+        }
+
+        /* Suggestions List Styling */
+        #suggestions {
+            list-style: none;
+            padding: 0;
+            margin-top: 5px; /* Space below count message */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            max-height: 200px; /* Limit height and add scrolling */
+            overflow-y: auto;
+            z-index: 1000; /* Ensure it's above other content if needed */
+            display: none; /* Hide by default */
+        }
+
+        #suggestions li {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s ease;
+        }
+
+        #suggestions li:last-child {
+            border-bottom: none;
+        }
+
+        #suggestions li:hover {
+            background-color: #f8f9fa;
+        }
+
+        /* Show suggestions list when there are items */
+        /* This relies on JS managing the display property directly */
+
+
+        /* Responsive Adjustments */
+        @media (max-width: 600px) {
+            .input-container {
+                padding: 15px;
+            }
+
+            .input-group {
+                flex-direction: column; /* Stack input and button on small screens */
+                gap: 10px;
+            }
+
+            #clearButton {
+                width: 100%; /* Full width button */
+            }
+        }
+    </style>
+
+
+</head>
+<body>
+
+    <div class="input-container">
+        <h2>Проверка Устройств</h2>
+        <p id="errorMessage" class="message"></p>
+        <div class="input-group">
+            <input type="text" id="searchInput" placeholder="Загрузка данных устройств..." disabled>
+            <button id="clearButton" disabled>Очистить</button>
+        </div>
+        <p id="statusMessage" class="message"></p>
+        <p id="countMessage" class="message"></p>
+        <ul id="suggestions">
+        </ul>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const suggestionsList = document.getElementById('suggestions');
+        const clearButton = document.getElementById('clearButton');
+        const statusMessage = document.getElementById('statusMessage');
+        const countMessage = document.getElementById('countMessage');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // --- GitHub Raw URL for JSON data (Base64 encoded array) ---
+        // Убедитесь, что этот URL указывает на ваш JSON файл с закодированными данными
+        const base64EncodedDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json'; // <-- ЗАМЕНИТЕ ЭТО НА ВАШ РЕАЛЬНЫЙ URL
+
+        // Variables to store the fetched and decoded data
+        let encodedDeviceData = []; // Массив с Base64 закодированными строками
+        let decodedDeviceData = []; // Массив с декодированными строками для поиска
+
+        // --- Function to Fetch and Decode Data from the URL ---
+        async function fetchData(url) {
+            try {
+                // Show a loading indicator or message
+                searchInput.placeholder = 'Загрузка данных устройств...';
+                searchInput.disabled = true;
+                clearButton.disabled = true;
+                errorMessage.style.display = 'none'; // Hide previous errors
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    // Handle HTTP errors (e.g., 404 Not Found, 500 Internal Server Error)
+                    throw new Error(`Ошибка HTTP! Статус: ${response.status}`);
+                }
+
+                // Assuming the data is a JSON array of Base64 encoded strings
+                encodedDeviceData = await response.json();
+
+                if (!Array.isArray(encodedDeviceData)) {
+                     throw new Error('Полученные данные не являются массивом.');
+                }
+
+                // Декодируем каждую строку из Base64
+                decodedDeviceData = encodedDeviceData.map(encodedItem => {
+                    try {
+                        // Используем atob() для декодирования Base64
+                        return atob(encodedItem);
+                    } catch (e) {
+                        console.error('Ошибка декодирования Base64:', encodedItem, e);
+                        // Возвращаем пустую строку или null для некорректных данных
+                        return null;
+                    }
+                }).filter(item => item !== null); // Удаляем элементы, которые не удалось декодировать
+
+
+                console.log('Данные устройств загружены и декодированы успешно:', decodedDeviceData.length, 'элементов');
+
+                // Re-enable input and button after data is loaded
+                searchInput.placeholder = 'Введите текст...';
+                searchInput.disabled = false;
+                clearButton.disabled = false;
+
+            } catch (error) {
+                console.error('Ошибка загрузки или декодирования данных устройств:', error);
+                // Display an error message to the user
+                errorMessage.textContent = `Не удалось загрузить или декодировать данные устройств. Проверьте URL или сетевое соединение. Ошибка: ${error.message}`;
+                errorMessage.style.display = 'block';
+                searchInput.placeholder = 'Ошибка загрузки данных';
+                searchInput.disabled = true; // Keep input disabled on error
+                clearButton.disabled = true; // Keep button disabled on error
+            }
+        }
+
+        // --- Helper Function to Format Input Display ---
+        // Removes existing spaces, then adds spaces every 3 characters.
+        // This is for the visual display in the input field.
+        function formatInputDisplay(value) {
+            if (!value) return "";
+            // Remove all existing spaces
+            const cleanedValue = String(value).replace(/\s/g, ''); // Убедимся, что это строка
+            let formattedValue = '';
+            for (let i = 0; i < cleanedValue.length; i++) {
+                formattedValue += cleanedValue[i];
+                if ((i + 1) % 3 === 0 && i !== cleanedValue.length - 1) {
+                    formattedValue += ' ';
+                }
+            }
+            return formattedValue;
+        }
+
+        // --- Function to Filter Data (searches in decoded data) ---
+        function filterData(query) {
+            // Remove spaces from the query for matching against decoded data items
+            const cleanedQuery = query.replace(/\s/g, '').toLowerCase();
+
+            if (!cleanedQuery || decodedDeviceData.length === 0) return []; // Return empty if query is empty or data not loaded/decoded
+
+            // Filter decoded data based on the cleaned, lowercase query
+            // This iterates through the decodedDeviceData list.
+            // For very large datasets (50000+ items), this might be slow.
+            // More performant solutions for very large datasets involve indexing (e.g., Trie).
+            return decodedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery)); // Убедимся, что item - строка
+        }
+
+        // --- Function to Display Suggestions ---
+        function displaySuggestions(suggestions) {
+            // Clear previous suggestions
+            suggestionsList.innerHTML = '';
+
+            // Update count message
+            if (suggestions.length > 0) {
+                countMessage.textContent = `Найдено: ${suggestions.length}`;
+                countMessage.style.display = 'block';
+                suggestionsList.style.display = 'block'; // Show list container
+            } else {
+                countMessage.textContent = '';
+                countMessage.style.display = 'none';
+                suggestionsList.style.display = 'none'; // Hide list container
+            }
+
+            // Display suggestions with numbering
+            suggestions.forEach((suggestion, index) => {
+                const li = document.createElement('li');
+                // Add numbering (index starts at 0, so add 1)
+                li.textContent = `${index + 1}. ${suggestion}`;
+                li.addEventListener('click', () => {
+                    // When a suggestion is clicked, set the input value
+                    // Use the original suggestion text (which is already decoded), then apply formatting for display
+                    const clickedText = suggestion; // Use the decoded suggestion string
+                    searchInput.value = formatInputDisplay(clickedText);
+
+                    // Clear suggestions and messages after selection
+                    suggestionsList.innerHTML = '';
+                    suggestionsList.style.display = 'none';
+                    statusMessage.textContent = '';
+                    statusMessage.style.display = 'none';
+                    countMessage.textContent = '';
+                    countMessage.style.display = 'none';
+
+                    // Remove the green border/glow
+                    searchInput.classList.remove('found-border');
+
+                    // Optional: Move focus back to input
+                    searchInput.focus();
+                });
+                suggestionsList.appendChild(li);
+            });
+        }
+
+        // --- Event Listener for Input ---
+        searchInput.addEventListener('input', (event) => {
+            const currentValue = event.target.value;
+
+            // Store cursor position before updating value
+            const cursorPosition = searchInput.selectionStart;
+
+            // Format the current value for display (this will add spaces back)
+            const formattedValue = formatInputDisplay(currentValue);
+
+            // Update the input field's value with the formatted string
+            // This *will* reset the cursor position to the end
+            searchInput.value = formattedValue;
+
+             // --- Attempt to restore cursor position ---
+             // Calculate new cursor position based on added spaces
+             let newCursorPosition = cursorPosition;
+             // Count spaces in the formatted string UP TO the original cursor position
+             let spacesAddedBeforeCursor = (formattedValue.substring(0, cursorPosition + (formattedValue.substring(0, cursorPosition).match(/\s/g) || []).length).match(/\s/g) || []).length;
+
+             newCursorPosition += spacesAddedBeforeCursor;
+
+             // Ensure cursor position doesn't exceed the string length
+             newCursorPosition = Math.min(newCursorPosition, formattedValue.length);
+
+
+             // Set the cursor position after the value has been updated
+             requestAnimationFrame(() => {
+                 searchInput.selectionStart = newCursorPosition;
+                 searchInput.selectionEnd = newCursorPosition;
+              });
+
+            // Filter data based on the *raw* value (without display spaces)
+            const rawValueForFiltering = currentValue.replace(/\s/g, '');
+            // Передаем rawValueForFiltering в filterData, которая ищет в decodedDeviceData
+            const suggestions = filterData(rawValueForFiltering);
+
+            // Display filtered suggestions (which are already decoded)
+            displaySuggestions(suggestions);
+
+            // Update status message and input border based on results
+            if (suggestions.length > 0 && rawValueForFiltering.length > 0) { // Добавлена проверка на непустой запрос
+                statusMessage.textContent = 'Найдено!';
+                statusMessage.style.display = 'block';
+                searchInput.classList.add('found-border'); // Add green border/glow
+            } else {
+                statusMessage.textContent = '';
+                statusMessage.style.display = 'none';
+                searchInput.classList.remove('found-border'); // Remove green border/glow
+            }
+        });
+
+
+        // --- Event Listener for Clear Button ---
+        clearButton.addEventListener('click', () => {
+            searchInput.value = ''; // Clear the input field
+            suggestionsList.innerHTML = ''; // Clear suggestions
+            suggestionsList.style.display = 'none'; // Hide suggestions list
+            statusMessage.textContent = ''; // Clear status message
+            statusMessage.style.display = 'none';
+            countMessage.textContent = ''; // Clear count message
+            countMessage.style.display = 'none';
+            errorMessage.style.display = 'none'; // Hide error message on clear
+            searchInput.classList.remove('found-border'); // Remove green border/glow
+            searchInput.focus(); // Put focus back on the input
+        });
+
+        // --- Hide suggestions when clicking outside ---
+        document.addEventListener('click', (event) => {
+            // Check if the click was outside the input container
+            const inputContainer = searchInput.closest('.input-container');
+            if (inputContainer && !inputContainer.contains(event.target)) {
+                 suggestionsList.style.display = 'none';
+                 // Optional: Hide status and count too when clicking away
+                 // statusMessage.style.display = 'none';
+                 // countMessage.style.display = 'none';
+            }
+        });
+
+        // Optional: Hide suggestions when pressing Escape key
+        searchInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                 suggestionsList.style.display = 'none';
+                 // Optional: Hide status and count too
+                 // statusMessage.style.display = 'none';
+                 // countMessage.style.display = 'none';
+            }
+             // Prevent the default behavior if escape key is pressed
+             if (suggestionsList.style.display === 'block' && event.key === 'Escape') {
+                 event.preventDefault();
+             }
+        });
+
+        // --- Initialize: Fetch data when the page loads ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData(base64EncodedDataUrl); // Call the fetchData function with the raw URL
+        });
+
+
+        // Initial state: hide suggestions list, status, count, and error messages
+        suggestionsList.style.display = 'none';
+        statusMessage.style.display = 'none';
+        countMessage.style.display = 'none';
+        errorMessage.style.display = 'none';
+
+
+    </script>
+
+</body>
+</html>
