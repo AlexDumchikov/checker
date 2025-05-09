@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Checker (Base64 Decoding)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .input-container {
+            width: 100%;
+            max-width: 500px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-container h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        #searchInput {
+            flex-grow: 1;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        #searchInput:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+        }
+
+        #searchInput.found-border {
+            border-color: #28a745;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.4);
+        }
+
+        #clearButton {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            outline: none;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #clearButton:hover {
+            background-color: #c82333;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .message {
+            font-size: 14px;
+            margin-bottom: 5px;
+            padding: 0 10px;
+            display: none;
+        }
+
+        #statusMessage {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        #errorMessage {
+            color: #dc3545;
+            font-weight: bold;
+            display: none;
+        }
+
+        #countMessage {
+            color: #555;
+        }
+
+        #suggestions {
+            list-style: none;
+            padding: 0;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        #suggestions li {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s ease;
+        }
+
+        #suggestions li:last-child {
+            border-bottom: none;
+        }
+
+        #suggestions li:hover {
+            background-color: #f8f9fa;
+        }
+
+        @media (max-width: 600px) {
+            .input-container {
+                padding: 15px;
+            }
+
+            .input-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            #clearButton {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-container">
+        <h2>Device Checker</h2>
+        <p id="errorMessage" class="message"></p>
+        <div class="input-group">
+            <input type="text" id="searchInput" placeholder="Loading device data..." disabled>
+            <button id="clearButton" disabled>Clear</button>
+        </div>
+        <p id="statusMessage" class="message"></p>
+        <p id="countMessage" class="message"></p>
+        <ul id="suggestions">
+        </ul>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const suggestionsList = document.getElementById('suggestions');
+        const clearButton = document.getElementById('clearButton');
+        const statusMessage = document.getElementById('statusMessage');
+        const countMessage = document.getElementById('countMessage');
+        const errorMessage = document.getElementById('errorMessage');
+
+        const base64EncodedDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json';
+
+        let encodedDeviceData = [];
+        let decodedDeviceData = [];
+
+        async function fetchData(url) {
+            try {
+                searchInput.placeholder = 'Loading device data...';
+                searchInput.disabled = true;
+                clearButton.disabled = true;
+                errorMessage.style.display = 'none';
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                encodedDeviceData = await response.json();
+
+                if (!Array.isArray(encodedDeviceData)) {
+                     throw new Error('Received data is not an array.');
+                }
+
+                decodedDeviceData = encodedDeviceData.map(encodedItem => {
+                    try {
+                        return atob(encodedItem);
+                    } catch (e) {
+                        console.error('Base64 decoding error:', encodedItem, e);
+                        return null;
+                    }
+                }).filter(item => item !== null);
+
+                console.log('Device data loaded and decoded successfully:', decodedDeviceData.length, 'items');
+
+                searchInput.placeholder = 'Enter text...';
+                searchInput.disabled = false;
+                clearButton.disabled = false;
+
+            } catch (error) {
+                console.error('Error loading or decoding device data:', error);
+                errorMessage.textContent = `Failed to load or decode device data. Please check the URL or network connection. Error: ${error.message}`;
+                errorMessage.style.display = 'block';
+                searchInput.placeholder = 'Error loading data';
+                searchInput.disabled = true;
+                clearButton.disabled = true;
+            }
+        }
+
+        function formatInputDisplay(value) {
+            if (!value) return "";
+            const cleanedValue = String(value).replace(/\s/g, '');
+            let formattedValue = '';
+            for (let i = 0; i < cleanedValue.length; i++) {
+                formattedValue += cleanedValue[i];
+                if ((i + 1) % 3 === 0 && i !== cleanedValue.length - 1) {
+                    formattedValue += ' ';
+                }
+            }
+            return formattedValue;
+        }
+
+        function filterData(query) {
+            const cleanedQuery = query.replace(/\s/g, '').toLowerCase();
+
+            if (!cleanedQuery || decodedDeviceData.length === 0) return [];
+
+            return decodedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery));
+        }
+
+        function displaySuggestions(suggestions) {
+            suggestionsList.innerHTML = '';
+
+            if (suggestions.length > 0) {
+                countMessage.textContent = `Found: ${suggestions.length}`;
+                countMessage.style.display = 'block';
+                suggestionsList.style.display = 'block';
+            } else {
+                countMessage.textContent = '';
+                countMessage.style.display = 'none';
+                suggestionsList.style.display = 'none';
+            }
+
+            suggestions.forEach((suggestion, index) => {
+                const li = document.createElement('li');
+                // Apply formatting to the suggestion text before displaying
+                const formattedSuggestion = formatInputDisplay(suggestion);
+                li.textContent = `${index + 1}. ${formattedSuggestion}`;
+                li.addEventListener('click', () => {
+                    // When a suggestion is clicked, set the input value
+                    // Use the original decoded suggestion text (which is already formatted for display)
+                    const clickedText = formattedSuggestion;
+                    searchInput.value = clickedText; // Set the formatted text directly
+
+                    suggestionsList.innerHTML = '';
+                    suggestionsList.style.display = 'none';
+                    statusMessage.textContent = '';
+                    statusMessage.style.display = 'none';
+                    countMessage.textContent = '';
+                    countMessage.style.display = 'none';
+
+                    searchInput.classList.remove('found-border');
+
+                    searchInput.focus();
+                });
+                suggestionsList.appendChild(li);
+            });
+        }
+
+        searchInput.addEventListener('input', (event) => {
+            const currentValue = event.target.value;
+
+            const cursorPosition = searchInput.selectionStart;
+
+            const formattedValue = formatInputDisplay(currentValue);
+
+            searchInput.value = formattedValue;
+
+             let newCursorPosition = cursorPosition;
+             let spacesAddedBeforeCursor = (formattedValue.substring(0, cursorPosition + (formattedValue.substring(0, cursorPosition).match(/\s/g) || []).length).match(/\s/g) || []).length;
+
+             newCursorPosition += spacesAddedBeforeCursor;
+
+             newCursorPosition = Math.min(newCursorPosition, formattedValue.length);
+
+             requestAnimationFrame(() => {
+                 searchInput.selectionStart = newCursorPosition;
+                 searchInput.selectionEnd = newCursorPosition;
+              });
+
+            const rawValueForFiltering = currentValue.replace(/\s/g, '');
+            const suggestions = filterData(rawValueForFiltering);
+
+            displaySuggestions(suggestions);
+
+            if (suggestions.length > 0 && rawValueForFiltering.length > 0) {
+                statusMessage.textContent = 'Found!';
+                statusMessage.style.display = 'block';
+                searchInput.classList.add('found-border');
+            } else {
+                statusMessage.textContent = '';
+                statusMessage.style.display = 'none';
+                searchInput.classList.remove('found-border');
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            searchInput.value = '';
+            suggestionsList.innerHTML = '';
+            suggestionsList.style.display = 'none';
+            statusMessage.textContent = '';
+            statusMessage.style.display = 'none';
+            countMessage.textContent = '';
+            countMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+            searchInput.classList.remove('found-border');
+            searchInput.focus();
+        });
+
+        document.addEventListener('click', (event) => {
+            const inputContainer = searchInput.closest('.input-container');
+            if (inputContainer && !inputContainer.contains(event.target)) {
+                 suggestionsList.style.display = 'none';
+            }
+        });
+
+        searchInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                 suggestionsList.style.display = 'none';
+            }
+             if (suggestionsList.style.display === 'block' && event.key === 'Escape') {
+                 event.preventDefault();
+             }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData(base64EncodedDataUrl);
+        });
+
+        suggestionsList.style.display = 'none';
+        statusMessage.style.display = 'none';
+        countMessage.style.display = 'none';
+        errorMessage.style.display = 'none';
+    </script>
+
+</body>
+</html>
