@@ -190,10 +190,9 @@
                 encryptedDeviceData = await response.json();
 
                 if (!Array.isArray(encryptedDeviceData)) {
-                     throw new Error('Received data is not an array.');
+                   throw new Error('Received data is not an array.');
                 }
 
-              
                 processedDeviceData = encryptedDeviceData.map(encryptedItem => {
                     try {
                         return atob(encryptedItem);
@@ -243,22 +242,36 @@
         function displaySuggestions(suggestions) {
             suggestionsList.innerHTML = '';
 
-            if (suggestions.length > 0) {
-                countMessage.textContent = `Found: ${suggestions.length}`;
+            const limitedSuggestions = suggestions.slice(0, 50);
+            const cleanedQuery = searchInput.value.replace(/\s/g, '').toLowerCase();
+
+
+            if (limitedSuggestions.length > 0) {
+                countMessage.textContent = `Found: ${suggestions.length} (Showing first ${limitedSuggestions.length})`;
                 countMessage.style.display = 'block';
                 suggestionsList.style.display = 'block';
             } else {
-                countMessage.textContent = '';
-                countMessage.style.display = 'none';
-                suggestionsList.style.display = 'none';
+                 countMessage.textContent = '';
+                 countMessage.style.display = 'none';
+                 suggestionsList.style.display = 'none';
             }
 
-            suggestions.forEach((suggestion, index) => {
+            limitedSuggestions.forEach(suggestion => {
                 const li = document.createElement('li');
                 const formattedSuggestion = formatInputDisplay(suggestion);
-                li.textContent = `${index + 1}. ${formattedSuggestion}`;
+
+                let highlightedSuggestion = formattedSuggestion;
+                if (cleanedQuery) {
+                    const regex = new RegExp(cleanedQuery.split('').join('\\s*'), 'gi');
+                    highlightedSuggestion = formattedSuggestion.replace(regex, match => {
+                        return `<span style="background-color: lightgreen;">${match}</span>`;
+                    });
+                }
+
+                li.innerHTML = highlightedSuggestion;
+
                 li.addEventListener('click', () => {
-                    const clickedText = formattedSuggestion;
+                    const clickedText = formatInputDisplay(suggestion); // Use original formatted text for input
                     searchInput.value = clickedText;
 
                     suggestionsList.innerHTML = '';
