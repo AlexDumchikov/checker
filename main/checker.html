@@ -169,10 +169,10 @@
         const countMessage = document.getElementById('countMessage');
         const errorMessage = document.getElementById('errorMessage');
 
-        const encodedDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json';
+        const encryptedDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json';
 
-        let encodedDeviceData = [];
-        let processedDeviceData = []; // Renamed from decodedDeviceData
+        let encryptedDeviceData = [];
+        let processedDeviceData = [];
 
         async function fetchData(url) {
             try {
@@ -187,18 +187,18 @@
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
 
-                encodedDeviceData = await response.json();
+                encryptedDeviceData = await response.json();
 
-                if (!Array.isArray(encodedDeviceData)) {
+                if (!Array.isArray(encryptedDeviceData)) {
                      throw new Error('Received data is not an array.');
                 }
 
               
-                processedDeviceData = encodedDeviceData.map(encodedItem => {
+                processedDeviceData = encryptedDeviceData.map(encryptedItem => {
                     try {
-                        return atob(encodedItem);
+                        return atob(encryptedItem);
                     } catch (e) {
-                        console.error('Data processing error:', encodedItem, e);
+                        console.error('Data processing error:', encryptedItem, e);
                         return null;
                     }
                 }).filter(item => item !== null);
@@ -343,7 +343,7 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchData(encodedDataUrl);
+            fetchData(encryptedDataUrl);
         });
 
         suggestionsList.style.display = 'none';
