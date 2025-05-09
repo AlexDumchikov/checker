@@ -236,7 +236,10 @@
 
             if (!cleanedQuery || processedDeviceData.length === 0) return [];
 
-            return processedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery));
+            const startsWith = processedDeviceData.filter(item => String(item).toLowerCase().startsWith(cleanedQuery));
+            const contains = processedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery) && !String(item).toLowerCase().startsWith(cleanedQuery));
+
+            return startsWith.concat(contains);
         }
 
         function displaySuggestions(suggestions) {
@@ -244,7 +247,6 @@
 
             const limitedSuggestions = suggestions.slice(0, 50);
             const cleanedQuery = searchInput.value.replace(/\s/g, '').toLowerCase();
-
 
             if (limitedSuggestions.length > 0) {
                 countMessage.textContent = `Found: ${suggestions.length} (Showing first ${limitedSuggestions.length})`;
@@ -271,7 +273,7 @@
                 li.innerHTML = highlightedSuggestion;
 
                 li.addEventListener('click', () => {
-                    const clickedText = formatInputDisplay(suggestion); // Use original formatted text for input
+                    const clickedText = formatInputDisplay(suggestion);
                     searchInput.value = clickedText;
 
                     suggestionsList.innerHTML = '';
