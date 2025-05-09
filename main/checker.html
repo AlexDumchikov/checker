@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Checker (Base64 Decoding)</title>
+    <title>Device Data Checker</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -149,7 +149,7 @@
 <body>
 
     <div class="input-container">
-        <h2>Device Checker</h2>
+        <h2>Device Data Checker</h2>
         <p id="errorMessage" class="message"></p>
         <div class="input-group">
             <input type="text" id="searchInput" placeholder="Loading device data..." disabled>
@@ -169,10 +169,10 @@
         const countMessage = document.getElementById('countMessage');
         const errorMessage = document.getElementById('errorMessage');
 
-        const base64EncodedDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json';
+        const encodedDataUrl = 'https://raw.githubusercontent.com/AlexDumchikov/checker/main/main/items.json';
 
         let encodedDeviceData = [];
-        let decodedDeviceData = [];
+        let processedDeviceData = []; // Renamed from decodedDeviceData
 
         async function fetchData(url) {
             try {
@@ -193,24 +193,25 @@
                      throw new Error('Received data is not an array.');
                 }
 
-                decodedDeviceData = encodedDeviceData.map(encodedItem => {
+                // Process each item (decode Base64)
+                processedDeviceData = encodedDeviceData.map(encodedItem => {
                     try {
                         return atob(encodedItem);
                     } catch (e) {
-                        console.error('Base64 decoding error:', encodedItem, e);
+                        console.error('Data processing error:', encodedItem, e);
                         return null;
                     }
                 }).filter(item => item !== null);
 
-                console.log('Device data loaded and decoded successfully:', decodedDeviceData.length, 'items');
+                console.log('Device data loaded and processed successfully:', processedDeviceData.length, 'items');
 
                 searchInput.placeholder = 'Enter text...';
                 searchInput.disabled = false;
                 clearButton.disabled = false;
 
             } catch (error) {
-                console.error('Error loading or decoding device data:', error);
-                errorMessage.textContent = `Failed to load or decode device data. Please check the URL or network connection. Error: ${error.message}`;
+                console.error('Error loading or processing device data:', error);
+                errorMessage.textContent = `Failed to load or process device data. Please check the URL or network connection. Error: ${error.message}`;
                 errorMessage.style.display = 'block';
                 searchInput.placeholder = 'Error loading data';
                 searchInput.disabled = true;
@@ -234,9 +235,9 @@
         function filterData(query) {
             const cleanedQuery = query.replace(/\s/g, '').toLowerCase();
 
-            if (!cleanedQuery || decodedDeviceData.length === 0) return [];
+            if (!cleanedQuery || processedDeviceData.length === 0) return [];
 
-            return decodedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery));
+            return processedDeviceData.filter(item => String(item).toLowerCase().includes(cleanedQuery));
         }
 
         function displaySuggestions(suggestions) {
@@ -254,14 +255,11 @@
 
             suggestions.forEach((suggestion, index) => {
                 const li = document.createElement('li');
-                // Apply formatting to the suggestion text before displaying
                 const formattedSuggestion = formatInputDisplay(suggestion);
                 li.textContent = `${index + 1}. ${formattedSuggestion}`;
                 li.addEventListener('click', () => {
-                    // When a suggestion is clicked, set the input value
-                    // Use the original decoded suggestion text (which is already formatted for display)
                     const clickedText = formattedSuggestion;
-                    searchInput.value = clickedText; // Set the formatted text directly
+                    searchInput.value = clickedText;
 
                     suggestionsList.innerHTML = '';
                     suggestionsList.style.display = 'none';
@@ -345,7 +343,7 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchData(base64EncodedDataUrl);
+            fetchData(encodedDataUrl);
         });
 
         suggestionsList.style.display = 'none';
